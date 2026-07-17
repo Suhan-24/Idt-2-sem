@@ -1,0 +1,92 @@
+[
+  {
+    "id": "med1",
+    "name": "Paracetamol 500mg",
+    "category": "Pain Relief",
+    "price": 12.5,
+    "stock": 500,
+    "description": "Effective pain reliever and fever reducer.",
+    "prescription_required": false
+  },
+  {
+    "id": "med2",
+    "name": "Metformin 500mg",
+    "category": "Diabetes",
+    "price": 45,
+    "stock": 300,
+    "description": "First-line medication for type 2 diabetes.",
+    "prescription_required": true
+  },
+  {
+    "id": "med3",
+    "name": "Atorvastatin 10mg",
+    "category": "Cardiology",
+    "price": 85,
+    "stock": 200,
+    "description": "Statin for lowering cholesterol and triglycerides.",
+    "prescription_required": true
+  },
+  {
+    "id": "med4",
+    "name": "Cetirizine 10mg",
+    "category": "Allergy",
+    "price": 18,
+    "stock": 400,
+    "description": "Antihistamine for allergy and hay fever symptoms.",
+    "prescription_required": false
+  },
+  {
+    "id": "med5",
+    "name": "Omeprazole 20mg",
+    "category": "Gastrology",
+    "price": 32,
+    "stock": 350,
+    "description": "Proton pump inhibitor for acid reflux and ulcers.",
+    "prescription_required": false
+  },
+  {
+    "id": "med6",
+    "name": "Amoxicillin 250mg",
+    "category": "Antibiotic",
+    "price": 55,
+    "stock": 150,
+    "description": "Broad-spectrum antibiotic for bacterial infections.",
+    "prescription_required": true
+  },
+  {
+    "id": "med7",
+    "name": "Aspirin 75mg",
+    "category": "Cardiology",
+    "price": 9,
+    "stock": 600,
+    "description": "Low-dose aspirin for heart attack and stroke prevention.",
+    "prescription_required": false
+  },
+  {
+    "id": "med8",
+    "name": "Azithromycin 500mg",
+    "category": "Antibiotic",
+    "price": 95,
+    "stock": 120,
+    "description": "Used for respiratory tract and skin infections.",
+    "prescription_required": true
+  },
+  {
+    "id": "med9",
+    "name": "Vitamin D3 60000IU",
+    "category": "Vitamins",
+    "price": 40,
+    "stock": 250,
+    "description": "Vitamin D supplement for bone health and immunity.",
+    "prescription_required": false
+  },
+  {
+    "id": "med10",
+    "name": "Pantoprazole 40mg",
+    "category": "Gastrology",
+    "price": 28,
+    "stock": 300,
+    "description": "Reduces stomach acid production for GERD treatment.",
+    "prescription_required": false
+  }
+]
