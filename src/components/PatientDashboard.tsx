@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, TrendingUp, Calendar, FileText, Upload, Bell, User, Activity, Trash2, Eye, X } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import type { Notification } from "./Header";
 
 import { useNavigate } from "react-router-dom";
 import { useGlobal } from "../context/GlobalContext";
+import { fetchRecords, uploadRecord, deleteRecordApi, type ApiMedicalRecord } from "../services/api";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -20,14 +21,20 @@ export function PatientDashboard() {
   const { lang, darkMode, user, appointments, notifications, markRead: onMarkRead } = useGlobal();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<"overview" | "records" | "profile" | "notifications">("overview");
-  const [records, setRecords] = useState<MedicalRecord[]>([
-    { id: "1", name: "Blood Test Report", type: "Lab Report", date: "2026-05-15", size: "2.4 MB" },
-    { id: "2", name: "X-Ray Chest AP", type: "Radiology", date: "2026-04-20", size: "5.8 MB" },
-    { id: "3", name: "ECG Report", type: "Cardiology", date: "2026-03-10", size: "1.2 MB" },
-  ]);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [viewRecord, setViewRecord] = useState<MedicalRecord | null>(null);
   const [deleteRecord, setDeleteRecord] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+
+  
+  useEffect(() => {
+    if (user?.mobile) {
+      fetchRecords(user.mobile)
+        .then((data) => setRecords(data as MedicalRecord[]))
+        .catch((err) => console.error("Failed to load records:", err));
+    }
+  }, [user?.mobile]);
 
   const total = appointments.length;
   const upcoming = appointments.filter((a) => a.status === "upcoming").length;
@@ -55,18 +62,24 @@ export function PatientDashboard() {
   const text = darkMode ? "text-white" : "text-slate-800";
   const subtext = darkMode ? "text-slate-400" : "text-slate-500";
 
-  function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const newRecord: MedicalRecord = {
-      id: Date.now().toString(),
-      name: file.name.replace(/\.[^/.]+$/, ""),
-      type: file.type.includes("image") ? "Imaging" : "Document",
-      date: new Date().toISOString().split("T")[0],
-      size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
-    };
-    setRecords([newRecord, ...records]);
-    e.target.value = "";
+    if (!file || !user) return;
+    try {
+      const newRecord = await uploadRecord({
+        patientPhone: user.mobile,
+        name: file.name.replace(/\.[^/.]+$/, ""),
+        type: file.type.includes("image") ? "Imaging" : "Document",
+        date: new Date().toISOString().split("T")[0],
+        size: `${(file.size / 1024 / 1024).toFixed(1)} MB`,
+      });
+      setRecords([newRecord as MedicalRecord, ...records]);
+    } catch (err) {
+      console.error("Failed to upload record:", err);
+      alert("Failed to upload record");
+    } finally {
+      e.target.value = "";
+    }
   }
 
   const statsCards = [
@@ -357,7 +370,16 @@ export function PatientDashboard() {
                 <button onClick={() => setDeleteRecord(null)} className={`flex-1 py-2.5 rounded-xl text-sm font-medium border ${darkMode ? "border-slate-700 text-slate-300" : "border-slate-200 text-slate-600"}`}>
                   Keep
                 </button>
-                <button onClick={() => { setRecords((r) => r.filter((rec) => rec.id !== deleteRecord)); setDeleteRecord(null); }}
+                <button onClick={async () => { 
+                    if (!deleteRecord) return;
+                    try {
+                      await deleteRecordApi(deleteRecord);
+                      setRecords((r) => r.filter((rec) => rec.id !== deleteRecord)); 
+                      setDeleteRecord(null); 
+                    } catch (err) {
+                      console.error("Failed to delete record:", err);
+                    }
+                  }}
                   className="flex-1 py-2.5 rounded-xl text-white text-sm font-bold bg-red-500">
                   Delete
                 </button>

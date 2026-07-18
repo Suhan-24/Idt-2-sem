@@ -136,6 +136,71 @@ export async function checkApiHealth(): Promise<boolean> {
   }
 }
 
+// ─── Medical Records ──────────────────────────────────────────────────────────
+
+export interface ApiMedicalRecord {
+  id: string;
+  patientPhone: string;
+  name: string;
+  type: string;
+  date: string;
+  size: string;
+}
+
+export async function fetchRecords(phone: string): Promise<ApiMedicalRecord[]> {
+  const qs = new URLSearchParams();
+  if (phone) qs.set('phone', phone);
+  return request<ApiMedicalRecord[]>(`/records?${qs.toString()}`);
+}
+
+export async function uploadRecord(data: Omit<ApiMedicalRecord, 'id'>): Promise<ApiMedicalRecord> {
+  return request<ApiMedicalRecord>('/records', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRecordApi(id: string): Promise<void> {
+  await fetch(`${API_BASE}/records/${id}`, { method: 'DELETE' });
+}
+
+// ─── Tablet Reminders ───────────────────────────────────────────────────────
+
+export interface ApiReminder {
+  id: string;
+  patientPhone: string;
+  tablet: string;
+  dosage: string;
+  time: string;
+  frequency: string;
+  notes: string;
+  taken: boolean | number;
+}
+
+export async function fetchReminders(phone: string): Promise<ApiReminder[]> {
+  const qs = new URLSearchParams();
+  if (phone) qs.set('phone', phone);
+  return request<ApiReminder[]>(`/reminders?${qs.toString()}`);
+}
+
+export async function createReminder(data: Omit<ApiReminder, 'id' | 'taken'> & { taken: boolean }): Promise<ApiReminder> {
+  return request<ApiReminder>('/reminders', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateReminder(id: string, taken: boolean): Promise<ApiReminder> {
+  return request<ApiReminder>(`/reminders/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ taken }),
+  });
+}
+
+export async function deleteReminderApi(id: string): Promise<void> {
+  await fetch(`${API_BASE}/reminders/${id}`, { method: 'DELETE' });
+}
+
 // ─── Orders ───────────────────────────────────────────────────────────────────
 
 export async function placeMedicineOrder(data: {

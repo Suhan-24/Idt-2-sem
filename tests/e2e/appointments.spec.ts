@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test.describe('Appointment Booking Flow', () => {
-  test('should allow booking an appointment after login', async ({ page }) => {
+  test('should allow booking an appointment after login', async ({ page, request }) => {
     // 1. Login first
     await page.click('button[aria-label="Login"]');
     await page.fill('input[placeholder="Enter your full name"]', 'John Doe');
@@ -49,7 +49,14 @@ test.describe('Appointment Booking Flow', () => {
     await expect(page.locator('h2:has-text("Appointment Booked Successfully!")')).toBeVisible();
     await page.click('button:has-text("Back to Home")');
 
-    // 7. Verify in My Appointments
+    // 7. Verify Backend Persistence First
+    const response = await request.get('/api/appointments?phone=9876543210');
+    const appointmentsBody = await response.json();
+    const myAppointment = appointmentsBody.data.find((a: any) => a.doctorName === 'Dr. Sanjay Patel');
+    expect(myAppointment).toBeDefined();
+    expect(myAppointment.patientPhone).toBe('9876543210');
+
+    // 8. Verify in My Appointments (UI Verification)
     await page.getByRole('button', { name: 'My Appointments', exact: true }).first().click();
     await expect(page.locator('text=Dr. Sanjay Patel').first()).toBeVisible();
     

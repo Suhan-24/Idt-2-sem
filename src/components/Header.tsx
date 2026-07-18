@@ -130,13 +130,27 @@ export function Header() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 3000);
+          
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`, {
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!res.ok) {
+            setUserLocation("Unknown Location");
+            return;
+          }
+          
           const data = await res.json();
           const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || "Unknown Location";
           setUserLocation(city);
         } catch (error) {
           console.error("Geocoding failed:", error);
-          if (!isAuto) alert("Failed to detect city");
+          // Gracefully fallback instead of alerting on rate-limit/network issues
+          setUserLocation("Unknown Location");
         } finally {
           setDetectingLocation(false);
         }

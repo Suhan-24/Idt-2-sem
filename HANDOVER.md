@@ -5,7 +5,7 @@ MedCare is a full-stack healthcare platform running entirely locally to prevent 
 - **Frontend**: React + Vite (TypeScript) using `react-router-dom` for navigation.
 - **Backend**: Express (Node.js).
 - **Database**: Persistent local SQLite (`server/medcare.db`).
-- **Testing**: Playwright (E2E full-stack verification).
+- **Testing**: Playwright (E2E full-stack verification with explicit backend API validation).
 
 ## 2. Codebase Structure
 The repository follows standard Vite/Express layout:
@@ -32,5 +32,6 @@ If you are modifying this codebase, you must adhere to the following constraints
 
 - **Framer Motion Race Conditions:** The UI heavily utilizes `framer-motion` (`AnimatePresence mode="wait"`). Components persist in the DOM for milliseconds while fading out. **Do not use raw Playwright `.click()` or `.fill()` immediately after navigation.** You must wait for the new elements to become fully visible, or use `{ force: true }` to bypass the animating outgoing elements.
 - **SQLite Concurrency Limits:** SQLite writes lock the database. Automated testing will throw `SQLITE_BUSY` errors if run concurrently. **Keep `workers: 1` in `playwright.config.ts`.**
-- **Test Visual Delays:** Every Playwright test explicitly ends with a `waitForTimeout(2000)`. Do not remove this; it is required for visual debugging of the final application state.
-- **Deployment Limitations:** Because the backend uses a local `.db` file, **do not deploy this to Vercel or any serverless provider.** Serverless cold-starts will instantly wipe the SQLite file. If cloud deployment is requested, you must first migrate the DB layer to PostgreSQL or MongoDB Atlas.
+- **Test Visual Delays**: Every Playwright test explicitly ends with a `waitForTimeout(2000)`. Do not remove this; it is required for visual debugging of the final application state.
+- **E2E Backend API Validation**: End-to-end tests intentionally query the Express APIs directly via Playwright's `request` fixture to verify SQLite persistence. When writing new E2E tests for state-mutating flows, you must validate against the backend in addition to verifying UI changes.
+- **Deployment Limitations**: Because the backend uses a local `.db` file, **do not deploy this to Vercel or any serverless provider.** Serverless cold-starts will instantly wipe the SQLite file. If cloud deployment is requested, you must first migrate the DB layer to PostgreSQL or MongoDB Atlas.

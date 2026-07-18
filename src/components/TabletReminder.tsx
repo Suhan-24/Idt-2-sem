@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Clock, Plus, Trash2, Bell, CheckCircle, X } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import { useGlobal } from "../context/GlobalContext";
+import { fetchReminders, createReminder, updateReminder, deleteReminderApi, type ApiReminder } from "../services/api";
 
 // Removed TabletReminderProps
 
@@ -21,33 +22,58 @@ const frequencies = ["Once daily", "Twice daily", "Three times daily", "Every 4 
 
 export function TabletReminder() {
   const navigate = useNavigate();
-  const { addNotification: onNotify } = useGlobal();
-  const [reminders, setReminders] = useState<Reminder[]>([
-    { id: "1", tablet: "Metformin 500mg", dosage: "1 tablet", time: "08:00", frequency: "Twice daily", notes: "Take with food", taken: false },
-    { id: "2", tablet: "Vitamin D3", dosage: "1 tablet", time: "09:00", frequency: "Once daily", notes: "Take after breakfast", taken: true },
-  ]);
+  const { user, addNotification: onNotify } = useGlobal();
+  const [reminders, setReminders] = useState<Reminder[]>([]);
+  
+  useEffect(() => {
+    if (user?.mobile) {
+      fetchReminders(user.mobile)
+        .then((data) => {
+          const mapped = data.map(r => ({ ...r, taken: !!r.taken }));
+          setReminders(mapped as Reminder[]);
+        })
+        .catch(console.error);
+    }
+  }, [user?.mobile]);
   const [showForm, setShowForm] = useState(false);
   const [showAlert, setShowAlert] = useState<Reminder | null>(null);
   const [form, setForm] = useState({ tablet: "", dosage: "", time: "", frequency: frequencies[0], notes: "" });
   const [success, setSuccess] = useState(false);
 
-  function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    const newReminder: Reminder = { ...form, id: Date.now().toString(), taken: false };
-    setReminders([...reminders, newReminder]);
-    onNotify({ type: "reminder", title: "Reminder Set!", message: `${form.tablet} at ${form.time} — ${form.frequency}` });
-    setForm({ tablet: "", dosage: "", time: "", frequency: frequencies[0], notes: "" });
-    setShowForm(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    if (!user) return;
+    try {
+      const saved = await createReminder({ ...form, patientPhone: user.mobile, taken: false });
+      setReminders([...reminders, { ...saved, taken: !!saved.taken } as Reminder]);
+      onNotify({ type: "reminder", title: "Reminder Set!", message: `${form.tablet} at ${form.time} — ${form.frequency}` });
+      setForm({ tablet: "", dosage: "", time: "", frequency: frequencies[0], notes: "" });
+      setShowForm(false);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  function toggleTaken(id: string) {
-    setReminders((r) => r.map((rem) => rem.id === id ? { ...rem, taken: !rem.taken } : rem));
+  async function toggleTaken(id: string) {
+    const rem = reminders.find(r => r.id === id);
+    if (!rem) return;
+    try {
+      await updateReminder(id, !rem.taken);
+      setReminders((r) => r.map((rm) => rm.id === id ? { ...rm, taken: !rm.taken } : rm));
+    } catch (err) {
+      console.error(err);
+    }
   }
 
-  function deleteReminder(id: string) {
-    setReminders((r) => r.filter((rem) => rem.id !== id));
+  async function deleteReminder(id: string) {
+    try {
+      await deleteReminderApi(id);
+      setReminders((r) => r.filter((rem) => rem.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
   }
 
   function simulateAlert(rem: Reminder) {
@@ -122,17 +148,17 @@ export function TabletReminder() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => simulateAlert(rem)}
+                      <button aria-label="Simulate alert" onClick={() => simulateAlert(rem)}
                         className="w-8 h-8 flex items-center justify-center rounded-lg bg-amber-50 hover:bg-amber-100 transition-colors">
                         <Bell size={14} className="text-amber-600" />
                       </button>
-                      <button onClick={() => toggleTaken(rem.id)}
+                      <button aria-label="Toggle taken" onClick={() => toggleTaken(rem.id)}
                         className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${rem.taken ? "bg-green-50 hover:bg-green-100" : "bg-slate-50 hover:bg-slate-100"}`}>
                         <CheckCircle size={14} className={rem.taken ? "text-green-500" : "text-slate-400"} />
                       </button>
-                      <button onClick={() => deleteReminder(rem.id)}
+                      <button aria-label="Delete reminder" onClick={() => deleteReminder(rem.id)}
                         className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 transition-colors">
-                        <Trash2 size={14} className="text-red-400" />
+                        <Trash2 size={14} className="text-red-500" />
                       </button>
                     </div>
                   </div>
