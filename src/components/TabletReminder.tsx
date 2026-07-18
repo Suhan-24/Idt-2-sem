@@ -2,10 +2,10 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Clock, Plus, Trash2, Bell, CheckCircle, X } from "lucide-react";
 
-interface TabletReminderProps {
-  onBack: () => void;
-  onNotify: (n: { type: string; title: string; message: string }) => void;
-}
+import { useNavigate } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
+
+// Removed TabletReminderProps
 
 interface Reminder {
   id: string;
@@ -19,7 +19,9 @@ interface Reminder {
 
 const frequencies = ["Once daily", "Twice daily", "Three times daily", "Every 4 hours", "Every 6 hours", "Every 8 hours", "Weekly", "As needed"];
 
-export function TabletReminder({ onBack, onNotify }: TabletReminderProps) {
+export function TabletReminder() {
+  const navigate = useNavigate();
+  const { addNotification: onNotify } = useGlobal();
   const [reminders, setReminders] = useState<Reminder[]>([
     { id: "1", tablet: "Metformin 500mg", dosage: "1 tablet", time: "08:00", frequency: "Twice daily", notes: "Take with food", taken: false },
     { id: "2", tablet: "Vitamin D3", dosage: "1 tablet", time: "09:00", frequency: "Once daily", notes: "Take after breakfast", taken: true },
@@ -56,8 +58,8 @@ export function TabletReminder({ onBack, onNotify }: TabletReminderProps) {
     <div className="min-h-screen pt-24 pb-16 px-4" style={{ background: "linear-gradient(160deg, #fffbeb 0%, #fff7ed 100%)" }}>
       <div className="max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-amber-600 mb-5 transition-colors text-sm">
-            <ArrowLeft size={16} /> Back
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-600 hover:text-blue-600 mb-6 transition-colors">
+            <ArrowLeft size={18} /> Back
           </button>
 
           {/* Header */}

@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { AlertCircle, MapPin, Phone, ArrowLeft, Truck, Clock, User, CheckCircle } from "lucide-react";
 
-interface EmergencyProps {
-  onBack: () => void;
-}
+import { useNavigate } from "react-router-dom";
+import { requestEmergencyAmbulance } from "../services/api";
+
+// Removed EmergencyProps
 
 const ambulances = [
   {
@@ -21,7 +22,8 @@ const ambulances = [
   },
 ];
 
-export function Emergency({ onBack }: EmergencyProps) {
+export function Emergency() {
+  const navigate = useNavigate();
   const [step, setStep] = useState<"permission" | "locating" | "found" | "tracking">("permission");
   const [selectedAmbulance, setSelectedAmbulance] = useState(ambulances[0]);
   const [countdown, setCountdown] = useState(180);
@@ -52,8 +54,8 @@ export function Emergency({ onBack }: EmergencyProps) {
     <div className="min-h-screen pt-24 pb-16 px-4" style={{ background: "linear-gradient(160deg, #fff5f5 0%, #fee2e2 50%, #fff0f0 100%)" }}>
       <div className="max-w-3xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-red-600 mb-6 transition-colors">
-            <ArrowLeft size={18} /> Back to Home
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 mb-5 text-sm text-slate-600 hover:text-red-600 transition-colors">
+            <ArrowLeft size={16} /> Back
           </button>
 
           {/* Header card */}
@@ -162,7 +164,18 @@ export function Emergency({ onBack }: EmergencyProps) {
 
                 {/* Emergency call button */}
                 <motion.button
-                  onClick={() => setStep("tracking")}
+                  onClick={async () => {
+                    try {
+                      await requestEmergencyAmbulance({
+                        location: location,
+                        driver_id: selectedAmbulance.id.toString(),
+                        driver_name: selectedAmbulance.driver,
+                      });
+                      setStep("tracking");
+                    } catch (err) {
+                      alert("Failed to dispatch ambulance. Please call directly.");
+                    }
+                  }}
                   className="w-full py-4 rounded-2xl text-white font-bold text-lg flex items-center justify-center gap-3 shadow-xl"
                   style={{ background: "linear-gradient(135deg, #dc2626, #b91c1c)", boxShadow: "0 10px 30px rgba(220,38,38,0.4)" }}
                   whileHover={{ scale: 1.02 }}
@@ -225,7 +238,7 @@ export function Emergency({ onBack }: EmergencyProps) {
                   <Phone size={20} /> Call Driver: {selectedAmbulance.phone}
                 </a>
 
-                <button onClick={onBack}
+                <button onClick={() => navigate("/")}
                   className="w-full py-3 rounded-2xl text-slate-600 font-medium text-sm border border-slate-200 hover:bg-slate-50 transition-colors">
                   Return to Home
                 </button>

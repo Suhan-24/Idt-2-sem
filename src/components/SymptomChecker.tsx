@@ -4,11 +4,11 @@ import { X, Mic, Volume2, Stethoscope, AlertTriangle, ChevronRight, Loader } fro
 import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
 
+import { useNavigate } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
+
 interface SymptomCheckerProps {
   onClose: () => void;
-  onNavigate: (s: string) => void;
-  lang: Lang;
-  darkMode: boolean;
 }
 
 const symptomResponses: Record<string, { severity: "low" | "medium" | "high"; conditions: string[]; advice: string; dept: string }> = {
@@ -48,7 +48,9 @@ function speak(text: string) {
   window.speechSynthesis.speak(u);
 }
 
-export function SymptomChecker({ onClose, onNavigate, lang, darkMode }: SymptomCheckerProps) {
+export function SymptomChecker({ onClose }: SymptomCheckerProps) {
+  const { lang, darkMode } = useGlobal();
+  const navigate = useNavigate();
   const [symptom, setSymptom] = useState("");
   const [result, setResult] = useState<ReturnType<typeof analyzeSymptoms> | null>(null);
   const [loading, setLoading] = useState(false);
@@ -105,7 +107,7 @@ export function SymptomChecker({ onClose, onNavigate, lang, darkMode }: SymptomC
                 <p className="text-blue-100 text-xs">{t(lang, "symptomDesc")}</p>
               </div>
             </div>
-            <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors">
+            <button onClick={onClose} aria-label="Close" className="w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors">
               <X size={16} className="text-white" />
             </button>
           </div>
@@ -190,7 +192,7 @@ export function SymptomChecker({ onClose, onNavigate, lang, darkMode }: SymptomC
                     </div>
 
                     <div className="flex gap-3">
-                      <button onClick={() => { onNavigate(`doctors?dept=${result.dept}`); onClose(); }}
+                      <button onClick={() => { navigate(`/doctors?dept=${result.dept}`); onClose(); }}
                         className="flex-1 py-3 rounded-2xl text-white text-sm font-semibold flex items-center justify-center gap-1.5"
                         style={{ background: "linear-gradient(135deg, #1a6fd4, #16a34a)" }}>
                         Book a Doctor <ChevronRight size={15} />

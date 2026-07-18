@@ -135,3 +135,57 @@ export async function checkApiHealth(): Promise<boolean> {
     return false;
   }
 }
+
+// ─── Orders ───────────────────────────────────────────────────────────────────
+
+export async function placeMedicineOrder(data: {
+  name: string;
+  phone: string;
+  address: string;
+  pin: string;
+  items: any[];
+  total: number;
+}) {
+  const res = await fetch(`${API_BASE}/orders`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to place order');
+  return res.json();
+}
+
+// ─── Video Consultations ───────────────────────────────────────────────────────
+
+export async function bookVideoConsultation(data: {
+  doctor_name: string;
+  department: string;
+  date: string;
+  slot: string;
+  upi_id: string;
+}) {
+  const res = await fetch(`${API_BASE}/video-consultations`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to book video consultation');
+  return res.json();
+}
+
+// ─── Emergencies ───────────────────────────────────────────────────────────────
+
+export async function requestEmergencyAmbulance(data: {
+  location: string;
+  driver_id?: string;
+  driver_name?: string;
+}) {
+  const res = await fetch(`${API_BASE}/emergencies`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Failed to dispatch ambulance');
+  return res.json();
+}
+

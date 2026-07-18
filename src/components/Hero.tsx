@@ -7,11 +7,8 @@ import {
 import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
 
-interface HeroProps {
-  onNavigate: (section: string) => void;
-  lang: Lang;
-  darkMode: boolean;
-}
+import { useNavigate } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
 
 const services = [
   { id: "emergency", icon: AlertCircle, label: "Emergency", desc: "Instant ambulance & help", color: "#dc2626", bg: "linear-gradient(135deg, #dc2626, #b91c1c)", glow: "rgba(220,38,38,0.2)", badge: "24/7" },
@@ -34,12 +31,14 @@ const trustBadges = [
   { icon: Heart, label: "50K+ Patients" },
 ];
 
-export function Hero({ onNavigate, lang, darkMode }: HeroProps) {
+export function Hero() {
+  const { lang, darkMode } = useGlobal();
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
-    onNavigate("doctors" + (query ? "?q=" + encodeURIComponent(query) : ""));
+    navigate("/doctors" + (query ? "?q=" + encodeURIComponent(query) : ""));
   }
 
   function handleVoiceSearch() {
@@ -131,12 +130,12 @@ export function Hero({ onNavigate, lang, darkMode }: HeroProps) {
           {/* CTA row */}
           <motion.div className="flex items-center justify-center gap-3 mb-12"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }}>
-            <button onClick={() => onNavigate("doctors")}
+            <button onClick={() => navigate("/doctors")}
               className="px-6 py-3 rounded-2xl text-white font-semibold text-sm flex items-center gap-2 shadow-lg hover:shadow-xl transition-all hover:scale-105"
               style={{ background: "linear-gradient(135deg, #1a6fd4, #16a34a)" }}>
               <Calendar size={16} /> {t(lang, "bookNow")}
             </button>
-            <button onClick={() => onNavigate("emergency")}
+            <button onClick={() => navigate("/emergency")}
               className="px-6 py-3 rounded-2xl font-semibold text-sm flex items-center gap-2 border-2 border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition-all hover:scale-105">
               <AlertCircle size={16} /> {t(lang, "emergencyBtn")}
             </button>
@@ -162,7 +161,7 @@ export function Hero({ onNavigate, lang, darkMode }: HeroProps) {
             {services.map((service, i) => {
               const Icon = service.icon;
               return (
-                <motion.button key={service.id} onClick={() => onNavigate(service.id)}
+                <motion.button key={service.id} onClick={() => navigate(`/${service.id}`)}
                   className="relative group flex flex-col items-center gap-3 p-5 rounded-3xl cursor-pointer"
                   style={{
                     background: darkMode ? "rgba(30,41,59,0.8)" : "rgba(255,255,255,0.85)",

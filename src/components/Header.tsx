@@ -9,6 +9,9 @@ import {
 import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
 
+import { useNavigate, useLocation } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
+
 export interface Notification {
   id: string;
   type: "appointment" | "reminder" | "consultation" | "alert";
@@ -25,28 +28,6 @@ export interface UserProfile {
   place: string;
 }
 
-interface HeaderProps {
-  user: UserProfile | null;
-  onLogin: (user: UserProfile) => void;
-  onLogout: () => void;
-  notifications: Notification[];
-  onMarkRead: (id: string) => void;
-  lang: Lang;
-  onLangChange: (lang: Lang) => void;
-  onNavigate: (section: string) => void;
-  darkMode: boolean;
-  onDarkMode: (v: boolean) => void;
-  highContrast: boolean;
-  onHighContrast: (v: boolean) => void;
-  largeText: boolean;
-  onLargeText: (v: boolean) => void;
-  currentScreen: string;
-  showLogin: boolean;
-  setShowLogin: (v: boolean) => void;
-  userLocation: string | null;
-  setUserLocation: (loc: string) => void;
-}
-
 const languages: { code: Lang; label: string; native: string }[] = [
   { code: "en", label: "English", native: "English" },
   { code: "kn", label: "Kannada", native: "ಕನ್ನಡ" },
@@ -61,14 +42,29 @@ const notifIcons: Record<string, React.ReactNode> = {
   alert: <AlertTriangle size={15} className="text-orange-500" />,
 };
 
-export function Header({
-  user, onLogin, onLogout, notifications, onMarkRead,
-  lang, onLangChange, onNavigate,
-  darkMode, onDarkMode, highContrast, onHighContrast, largeText, onLargeText,
-  currentScreen,
-  showLogin, setShowLogin,
-  userLocation, setUserLocation,
-}: HeaderProps) {
+export function Header() {
+  const {
+    user, setUser, notifications, markRead: onMarkRead,
+    lang, setLang: onLangChange,
+    darkMode, setDarkMode: onDarkMode,
+    highContrast, setHighContrast: onHighContrast,
+    largeText, setLargeText: onLargeText,
+    userLocation, setUserLocation
+  } = useGlobal();
+
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentScreen = location.pathname.substring(1) || "home";
+
+  const onNavigate = (section: string) => {
+    if (section === "home") navigate("/");
+    else navigate(`/${section}`);
+  };
+
+  const onLogin = (u: UserProfile) => setUser(u);
+  const onLogout = () => setUser(null);
+
+  const [showLogin, setShowLogin] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [showLang, setShowLang] = useState(false);
   const [showProfile, setShowProfile] = useState(false);

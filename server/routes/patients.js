@@ -1,39 +1,66 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { randomUUID } from 'crypto';
 
 const router = Router();
 
 // GET /api/patients?phone=9876543210
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { phone } = req.query;
-    const results = db.find('patients', p => !phone || p.phone === phone);
-    res.json({ success: true, data: results });
+    
+    let sql = 'SELECT * FROM patients';
+    const params = [];
+    
+    if (phone) {
+      sql += ' WHERE phone = ?';
+      params.push(phone);
+    }
+
+    const dbInstance = await db.getDB();
+    const data = await dbInstance.all(sql, params);
+
+    res.json({ success: true, data });
   } catch (err) {
+    console.error('GET /api/patients error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST /api/patients — upsert by phone
-router.post('/', (req, res) => {
+// POST /api/patients
+router.post('/', async (req, res) => {
   try {
     const { name, phone, email, dob, blood_group } = req.body;
-    if (!name || !phone) return res.status(400).json({ success: false, error: 'name and phone are required' });
-
-    const existing = db.findOne('patients', p => p.phone === phone);
-    if (existing) {
-      const updated = db.update('patients', existing.id, {
-        name,
-        email: email || existing.email,
-        dob: dob || existing.dob,
-        blood_group: blood_group || existing.blood_group,
-      });
-      return res.json({ success: true, data: updated });
+    
+    if (!name || !phone) {
+      return res.status(400).json({ success: false, error: 'Name and phone are required' });
     }
 
-    const patient = db.insert('patients', { name, phone, email: email || '', dob: dob || '', blood_group: blood_group || '' });
+    const dbInstance = await db.getDB();
+    
+    const existing = await dbInstance.get('SELECT id FROM patients WHERE phone = ?', [phone]);
+    if (existing) {
+      return res.status(409).json({ success: false, error: 'Patient with this phone already exists' });
+    }
+
+    const patient = {
+      id: randomUUID(),
+      name,
+      phone,
+      email: email || '',
+      dob: dob || '',
+      blood_group: blood_group || '',
+      created_at: new Date().toISOString()
+    };
+
+    await dbInstance.run(
+      `INSERT INTO patients (id, name, phone, email, dob, blood_group, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [patient.id, patient.name, patient.phone, patient.email, patient.dob, patient.blood_group, patient.created_at]
+    );
+    
     res.status(201).json({ success: true, data: patient });
   } catch (err) {
+    console.error('POST /api/patients error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

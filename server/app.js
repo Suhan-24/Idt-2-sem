@@ -5,6 +5,10 @@ import appointmentsRouter from './routes/appointments.js';
 import patientsRouter from './routes/patients.js';
 import medicinesRouter from './routes/medicines.js';
 
+import ordersRouter from './routes/orders.js';
+import videoConsultationsRouter from './routes/video_consultations.js';
+import emergenciesRouter from './routes/emergencies.js';
+
 const app = express();
 
 app.use(cors());
@@ -20,6 +24,9 @@ app.use('/api/doctors', doctorsRouter);
 app.use('/api/appointments', appointmentsRouter);
 app.use('/api/patients', patientsRouter);
 app.use('/api/medicines', medicinesRouter);
+app.use('/api/orders', ordersRouter);
+app.use('/api/video-consultations', videoConsultationsRouter);
+app.use('/api/emergencies', emergenciesRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });

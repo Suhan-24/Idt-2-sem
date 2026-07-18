@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Video, Star, Clock, CreditCard, CheckCircle, Mic, MicOff, Camera, CameraOff, Phone, MessageSquare, Users } from "lucide-react";
 
-interface VideoConsultProps {
-  onBack: () => void;
-  onNotify: (n: { type: string; title: string; message: string }) => void;
-}
+import { useNavigate } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
+import { bookVideoConsultation } from "../services/api";
+
+// Removed VideoConsultProps
 
 const categories = [
   { id: "general", label: "General Physician", icon: "🩺", color: "#1a6fd4" },
@@ -57,7 +58,9 @@ const doctorsByCategory: Record<string, { name: string; exp: string; langs: stri
 
 type PaymentMethod = "upi" | "card" | "debit" | "netbanking";
 
-export function VideoConsultation({ onBack, onNotify }: VideoConsultProps) {
+export function VideoConsultation() {
+  const navigate = useNavigate();
+  const { addNotification: onNotify } = useGlobal();
   const [step, setStep] = useState<"category" | "doctors" | "payment" | "scheduled" | "call">("category");
   const [selectedCat, setSelectedCat] = useState(categories[0]);
   const [selectedDoc, setSelectedDoc] = useState(doctorsByCategory["general"][0]);
@@ -84,10 +87,26 @@ export function VideoConsultation({ onBack, onNotify }: VideoConsultProps) {
     return `${m}:${String(sec).padStart(2, "0")}`;
   }
 
-  function handlePayment(e: React.FormEvent) {
+  const [loading, setLoading] = useState(false);
+
+  async function handlePayment(e: React.FormEvent) {
     e.preventDefault();
-    onNotify({ type: "consultation", title: "Video Consultation Scheduled", message: `${selectedDoc.name} at ${selectedSlot}` });
-    setStep("scheduled");
+    try {
+      setLoading(true);
+      await bookVideoConsultation({
+        doctor_name: selectedDoc.name,
+        department: selectedCat.id,
+        date: new Date().toISOString().split('T')[0],
+        slot: selectedSlot,
+        upi_id: payMethod === "upi" ? upiId : "card-payment",
+      });
+      onNotify({ type: "consultation", title: "Video Consultation Scheduled", message: `${selectedDoc.name} at ${selectedSlot}` });
+      setStep("scheduled");
+    } catch (err) {
+      alert("Failed to schedule consultation. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function sendMessage() {
@@ -107,7 +126,7 @@ export function VideoConsultation({ onBack, onNotify }: VideoConsultProps) {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {step !== "call" && (
             <button onClick={() => {
-              if (step === "category") onBack();
+              if (step === "category") navigate(-1);
               else if (step === "doctors") setStep("category");
               else if (step === "payment") setStep("doctors");
               else if (step === "scheduled") setStep("payment");
@@ -253,9 +272,10 @@ export function VideoConsultation({ onBack, onNotify }: VideoConsultProps) {
                   )}
 
                   <button type="submit"
-                    className="w-full py-3.5 rounded-2xl text-white font-semibold text-sm transition-all hover:opacity-90 hover:shadow-lg flex items-center justify-center gap-2"
+                    disabled={loading}
+                    className={`w-full py-3.5 rounded-2xl text-white font-semibold text-sm transition-all flex items-center justify-center gap-2 ${loading ? 'opacity-75 cursor-not-allowed' : 'hover:opacity-90 hover:shadow-lg'}`}
                     style={{ background: "linear-gradient(135deg, #7c3aed, #6d28d9)" }}>
-                    <CreditCard size={18} /> Pay {selectedDoc.fee}
+                    <CreditCard size={18} /> {loading ? "Processing..." : `Pay ${selectedDoc.fee}`}
                   </button>
                 </form>
               </motion.div>
@@ -340,7 +360,7 @@ export function VideoConsultation({ onBack, onNotify }: VideoConsultProps) {
                       className={`w-12 h-12 rounded-full flex items-center justify-center ${camOff ? "bg-red-500" : "bg-white/20"}`}>
                       {camOff ? <CameraOff size={20} className="text-white" /> : <Camera size={20} className="text-white" />}
                     </button>
-                    <button onClick={() => { setStep("scheduled"); onBack(); }}
+                    <button onClick={() => { setStep("scheduled"); navigate(-1); }}
                       className="w-14 h-14 rounded-full flex items-center justify-center bg-red-500 shadow-lg shadow-red-500/40">
                       <Phone size={24} className="text-white rotate-[135deg]" />
                     </button>

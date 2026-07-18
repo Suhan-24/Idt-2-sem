@@ -1,29 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { ArrowLeft, Search, ShoppingCart, Plus, Minus, X, Package, Truck } from "lucide-react";
 
-interface MedicineShopProps {
-  onBack: () => void;
-}
+import { useNavigate } from "react-router-dom";
+import { fetchMedicines, placeMedicineOrder } from "../services/api";
+import type { ApiMedicine } from "../services/api";
 
-const categories = ["All", "Prescription", "OTC", "Vitamins", "Pain Relief", "Diabetes", "Heart"];
+const categories = ["All", "Prescription", "OTC", "Cardiology", "Gastrology", "Pain Relief", "Diabetes", "Antibiotic", "Vitamins", "Allergy"];
 
-const medicines = [
-  { id: 1, name: "Paracetamol 500mg", brand: "Crocin", price: 25, mrp: 32, category: "OTC", image: "💊", desc: "For fever and mild pain", available: true, prescription: false },
-  { id: 2, name: "Metformin 500mg", brand: "Glycomet", price: 65, mrp: 80, category: "Diabetes", image: "💊", desc: "Blood sugar control", available: true, prescription: true },
-  { id: 3, name: "Atorvastatin 10mg", brand: "Atorva", price: 120, mrp: 145, category: "Heart", image: "💊", desc: "Cholesterol management", available: true, prescription: true },
-  { id: 4, name: "Vitamin D3 1000IU", brand: "D3 Must", price: 180, mrp: 220, category: "Vitamins", image: "🌞", desc: "Bone health support", available: true, prescription: false },
-  { id: 5, name: "Ibuprofen 400mg", brand: "Brufen", price: 35, mrp: 42, category: "Pain Relief", image: "💊", desc: "Anti-inflammatory pain relief", available: true, prescription: false },
-  { id: 6, name: "Amoxicillin 500mg", brand: "Moxikind", price: 95, mrp: 115, category: "Prescription", image: "💊", desc: "Antibiotic for infections", available: false, prescription: true },
-  { id: 7, name: "Omeprazole 20mg", brand: "Omez", price: 45, mrp: 55, category: "OTC", image: "💊", desc: "Acid reflux relief", available: true, prescription: false },
-  { id: 8, name: "Vitamin C 500mg", brand: "Limcee", price: 55, mrp: 65, category: "Vitamins", image: "🍊", desc: "Immunity booster", available: true, prescription: false },
-  { id: 9, name: "Aspirin 75mg", brand: "Loprin", price: 28, mrp: 35, category: "Heart", image: "❤️", desc: "Blood thinner, heart health", available: true, prescription: false },
-  { id: 10, name: "Pantoprazole 40mg", brand: "Pan D", price: 58, mrp: 72, category: "Prescription", image: "💊", desc: "Stomach acid reducer", available: true, prescription: true },
-];
+interface CartItem { id: string; name: string; price: number; qty: number; }
 
-interface CartItem { id: number; name: string; price: number; qty: number; }
-
-export function MedicineShop({ onBack }: MedicineShopProps) {
+export function MedicineShop() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [activeCat, setActiveCat] = useState("All");
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -32,12 +20,21 @@ export function MedicineShop({ onBack }: MedicineShopProps) {
   const [address, setAddress] = useState({ name: "", phone: "", addr: "", pin: "" });
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "address" | "success">("cart");
 
+  const [medicines, setMedicines] = useState<ApiMedicine[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchMedicines().then((data) => {
+      setMedicines(data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
   const filtered = medicines.filter((m) =>
-    (activeCat === "All" || m.category === activeCat) &&
-    (m.name.toLowerCase().includes(query.toLowerCase()) || m.brand.toLowerCase().includes(query.toLowerCase()))
+    (activeCat === "All" || m.category === activeCat || (activeCat === "Prescription" && m.prescription_required) || (activeCat === "OTC" && !m.prescription_required)) &&
+    (m.name.toLowerCase().includes(query.toLowerCase()))
   );
 
-  function addToCart(med: typeof medicines[0]) {
+  function addToCart(med: ApiMedicine) {
     setCart((c) => {
       const existing = c.find((i) => i.id === med.id);
       if (existing) return c.map((i) => i.id === med.id ? { ...i, qty: i.qty + 1 } : i);
@@ -45,11 +42,11 @@ export function MedicineShop({ onBack }: MedicineShopProps) {
     });
   }
 
-  function removeFromCart(id: number) {
+  function removeFromCart(id: string) {
     setCart((c) => c.filter((i) => i.id !== id));
   }
 
-  function updateQty(id: number, delta: number) {
+  function updateQty(id: string, delta: number) {
     setCart((c) => c.map((i) => i.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i));
   }
 
@@ -61,7 +58,7 @@ export function MedicineShop({ onBack }: MedicineShopProps) {
       <div className="max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <div className="flex items-center justify-between mb-5">
-            <button onClick={onBack} className="flex items-center gap-2 text-slate-600 hover:text-green-600 transition-colors text-sm">
+            <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-600 hover:text-green-600 transition-colors text-sm">
               <ArrowLeft size={16} /> Back
             </button>
             <button onClick={() => setShowCart(true)} className="relative flex items-center gap-2 px-4 py-2 rounded-xl text-white text-sm font-medium"
@@ -111,22 +108,21 @@ export function MedicineShop({ onBack }: MedicineShopProps) {
               return (
                 <motion.div key={med.id} className="bg-white rounded-2xl p-4 shadow-sm"
                   initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                  <div className="text-4xl mb-3 text-center">{med.image}</div>
+                  <div className="text-4xl mb-3 text-center">💊</div>
                   <div className="flex items-center gap-1 mb-1">
-                    {med.prescription && (
+                    {med.prescription_required && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-600">Rx</span>
                     )}
                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-600">{med.category}</span>
                   </div>
                   <h3 className="font-semibold text-slate-800 text-sm leading-tight">{med.name}</h3>
-                  <p className="text-xs text-slate-500">{med.brand}</p>
-                  <p className="text-xs text-slate-400 mt-1">{med.desc}</p>
+                  <p className="text-xs text-slate-400 mt-1">{med.description}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <span className="font-bold text-slate-800">₹{med.price}</span>
-                    <span className="text-xs text-slate-400 line-through">₹{med.mrp}</span>
+                    <span className="text-xs text-slate-400 line-through">₹{med.price + 10}</span>
                   </div>
 
-                  {!med.available ? (
+                  {med.stock <= 0 ? (
                     <div className="mt-3 py-2 rounded-xl bg-slate-100 text-center text-xs text-slate-400">Out of Stock</div>
                   ) : inCart ? (
                     <div className="mt-3 flex items-center justify-between bg-green-50 rounded-xl px-2 py-1.5">
@@ -244,13 +240,32 @@ export function MedicineShop({ onBack }: MedicineShopProps) {
                     <span className="text-sm text-slate-500">Total ({cartCount} items)</span>
                     <span className="font-bold text-slate-800">₹{total}</span>
                   </div>
-                  <button onClick={() => {
-                    if (checkoutStep === "cart") setCheckoutStep("address");
-                    else if (checkoutStep === "address") setCheckoutStep("success");
+                  <button onClick={async () => {
+                    if (checkoutStep === "cart") {
+                      setCheckoutStep("address");
+                    } else if (checkoutStep === "address") {
+                      try {
+                        setLoading(true);
+                        await placeMedicineOrder({
+                          name: address.name,
+                          phone: address.phone,
+                          address: address.addr,
+                          pin: address.pin,
+                          items: cart,
+                          total,
+                        });
+                        setCheckoutStep("success");
+                      } catch (err) {
+                        alert("Failed to place order. Please try again.");
+                      } finally {
+                        setLoading(false);
+                      }
+                    }
                   }}
-                    className="w-full py-3.5 rounded-2xl text-white font-semibold text-sm"
+                    disabled={loading}
+                    className={`w-full py-3.5 rounded-2xl text-white font-semibold text-sm ${loading ? 'opacity-75 cursor-not-allowed' : ''}`}
                     style={{ background: "linear-gradient(135deg, #16a34a, #15803d)" }}>
-                    {checkoutStep === "cart" ? "Proceed to Checkout" : "Place Order"}
+                    {loading ? "Processing..." : checkoutStep === "cart" ? "Proceed to Checkout" : "Place Order"}
                   </button>
                 </div>
               )}

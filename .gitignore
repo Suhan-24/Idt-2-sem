@@ -3,3 +3,11 @@ dist
 .env
 .env.*
 .vercel
+
+# Frankenreview artifacts
+.frankenreview/
+test-results/
+playwright-report/
+server/medcare.db
+__pycache__/
+*.pyc

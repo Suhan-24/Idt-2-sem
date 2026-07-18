@@ -5,15 +5,10 @@ import { doctors as staticDoctors } from "../data/doctors";
 import { DEPT_COLORS, DEPT_ICONS, type Department, type Doctor } from "../data/types";
 import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
-import { fetchDoctors } from "../api";
+import { fetchDoctors } from "../services/api";
 
-interface DoctorSearchProps {
-  onBack: () => void;
-  onSelectDoctor: (doctorId: string) => void;
-  lang: Lang;
-  darkMode: boolean;
-  initialQuery?: string;
-}
+import { useNavigate, useLocation } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
 
 const departments: { id: Department; labelKey: string }[] = [
   { id: "general", labelKey: "deptGeneral" },
@@ -32,7 +27,12 @@ function speak(text: string) {
   window.speechSynthesis.speak(utter);
 }
 
-export function DoctorSearch({ onBack, onSelectDoctor, lang, darkMode, initialQuery = "" }: DoctorSearchProps) {
+export function DoctorSearch() {
+  const { lang, darkMode } = useGlobal();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const initialQuery = new URLSearchParams(location.search).get("q") || "";
+  
   const [selectedDept, setSelectedDept] = useState<Department | "all">("all");
   const [query, setQuery] = useState(initialQuery);
   const [showFilter, setShowFilter] = useState(false);
@@ -77,7 +77,7 @@ export function DoctorSearch({ onBack, onSelectDoctor, lang, darkMode, initialQu
       style={{ background: darkMode ? "#0f172a" : "linear-gradient(160deg, #eff6ff 0%, #f0fdf4 100%)" }}>
       <div className="max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <button onClick={onBack} className={`flex items-center gap-2 mb-5 text-sm transition-colors ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
+          <button onClick={() => navigate(-1)} className={`flex items-center gap-2 mb-5 text-sm transition-colors ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
             <ArrowLeft size={16} /> {t(lang, "back")}
           </button>
 
@@ -228,7 +228,7 @@ export function DoctorSearch({ onBack, onSelectDoctor, lang, darkMode, initialQu
 
                   {/* Book button */}
                   <motion.button
-                    onClick={() => onSelectDoctor(doc.id)}
+                    onClick={() => navigate(`/booking?doctorId=${doc.id}`)}
                     className="mt-4 w-full py-2.5 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 transition-all hover:opacity-90"
                     style={{ background: `linear-gradient(135deg, ${DEPT_COLORS[doc.dept]}, ${DEPT_COLORS[doc.dept]}bb)` }}
                     whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}>

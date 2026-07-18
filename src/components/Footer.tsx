@@ -1,11 +1,9 @@
 import { motion } from "motion/react";
 import { Facebook, Instagram, Twitter, Linkedin, Youtube, Heart } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
-interface FooterProps {
-  onNavigate: (section: string) => void;
-}
-
-export function Footer({ onNavigate }: FooterProps) {
+export function Footer() {
+  const navigate = useNavigate();
   return (
     <footer style={{ background: "linear-gradient(160deg, #0d1b3e 0%, #0d2d6e 100%)" }} className="text-white">
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -41,16 +39,15 @@ export function Footer({ onNavigate }: FooterProps) {
             <h4 className="font-bold mb-4 text-white" style={{ fontFamily: "var(--font-display)" }}>Quick Links</h4>
             <ul className="space-y-2.5">
               {[
-                { label: "Home", section: "home" },
-                { label: "Appointments", section: "appointment" },
-                { label: "Video Consultation", section: "video" },
-                { label: "Emergency Services", section: "emergency" },
-                { label: "Medicine Shop", section: "medicine" },
-              ].map(({ label, section }) => (
-                <li key={label}>
-                  <button onClick={() => onNavigate(section)}
-                    className="text-blue-200 hover:text-white text-sm transition-colors">
-                    {label}
+                { l: "Home", s: "/" },
+                { l: "Find Doctors", s: "/doctors" },
+                { l: "Emergency", s: "/emergency" },
+                { l: "Video Consult", s: "/video" },
+                { l: "Medicine Shop", s: "/medicine" },
+              ].map((link) => (
+                <li key={link.l}>
+                  <button onClick={() => navigate(link.s)} className="text-slate-400 hover:text-blue-500 transition-colors text-sm">
+                    {link.l}
                   </button>
                 </li>
               ))}

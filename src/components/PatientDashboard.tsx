@@ -11,20 +11,14 @@ import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
 import type { Notification } from "./Header";
 
-interface PatientDashboardProps {
-  appointments: Appointment[];
-  notifications: Notification[];
-  onMarkRead: (id: string) => void;
-  onBack: () => void;
-  onNavigate: (s: string) => void;
-  lang: Lang;
-  darkMode: boolean;
-  user: { name: string; mobile: string; age: string; place: string } | null;
-}
+import { useNavigate } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-export function PatientDashboard({ appointments, notifications, onMarkRead, onBack, onNavigate, lang, darkMode, user }: PatientDashboardProps) {
+export function PatientDashboard() {
+  const { lang, darkMode, user, appointments, notifications, markRead: onMarkRead } = useGlobal();
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState<"overview" | "records" | "profile" | "notifications">("overview");
   const [records, setRecords] = useState<MedicalRecord[]>([
     { id: "1", name: "Blood Test Report", type: "Lab Report", date: "2026-05-15", size: "2.4 MB" },
@@ -92,9 +86,9 @@ export function PatientDashboard({ appointments, notifications, onMarkRead, onBa
   return (
     <div className="min-h-screen pt-24 pb-16 px-4"
       style={{ background: darkMode ? "#0f172a" : "linear-gradient(160deg, #eff6ff 0%, #f0fff8 100%)" }}>
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <button onClick={onBack} className={`flex items-center gap-2 mb-5 text-sm ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
+          <button onClick={() => navigate(-1)} className={`flex items-center gap-2 mb-6 text-sm transition-colors ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
             <ArrowLeft size={16} /> {t(lang, "back")}
           </button>
 
@@ -192,7 +186,7 @@ export function PatientDashboard({ appointments, notifications, onMarkRead, onBa
                   <div className="rounded-2xl shadow-sm" style={{ background: card, border: `1px solid ${border}` }}>
                     <div className="p-4 border-b flex items-center justify-between" style={{ borderColor: darkMode ? "rgba(255,255,255,0.08)" : "#f0f9ff" }}>
                       <h3 className={`font-bold text-sm ${text}`}>Recent Appointments</h3>
-                      <button onClick={() => onNavigate("myappointments")} className="text-xs text-blue-500 hover:underline">{t(lang, "viewAll")}</button>
+                      <button onClick={() => navigate("/myappointments")} className="text-xs text-blue-500 hover:underline">{t(lang, "viewAll")}</button>
                     </div>
                     {appointments.slice(0, 4).map((appt, i) => (
                       <div key={appt.id} className={`flex items-center gap-3 p-4 border-b last:border-0 ${darkMode ? "border-white/5" : "border-slate-50"}`}>
@@ -274,6 +268,9 @@ export function PatientDashboard({ appointments, notifications, onMarkRead, onBa
                           <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${!n.read ? "bg-blue-500" : "bg-transparent"}`} />
                           <div className="flex-1">
                             <p className={`text-sm font-semibold ${text}`}>{n.title}</p>
+                            <div className="flex gap-2 mt-4">
+                              <button onClick={() => navigate(`/doctors`)} className="text-xs text-blue-500 font-semibold hover:underline">Rebook</button>
+                            </div>
                             <p className={`text-xs mt-0.5 ${subtext}`}>{n.message}</p>
                             <p className="text-xs text-slate-400 mt-1">{n.time}</p>
                           </div>

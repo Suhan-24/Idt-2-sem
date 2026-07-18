@@ -1,20 +1,30 @@
 import { Router } from 'express';
 import db from '../db.js';
+import { randomUUID } from 'crypto';
 
 const router = Router();
 
 // GET /api/appointments?phone=9876543210&status=upcoming
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const { phone, status } = req.query;
-    let results = db.find('appointments', (a) => {
-      if (phone && a.patientPhone !== phone) return false;
-      if (status && a.status !== status) return false;
-      return true;
-    });
-    // Sort newest first
-    results = results.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    res.json({ success: true, data: results });
+    
+    let sql = 'SELECT * FROM appointments';
+    const params = [];
+    const conditions = [];
+
+    if (phone) { conditions.push('patientPhone = ?'); params.push(phone); }
+    if (status) { conditions.push('status = ?'); params.push(status); }
+
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+    sql += ' ORDER BY createdAt DESC';
+
+    const dbInstance = await db.getDB();
+    const data = await dbInstance.all(sql, params);
+    
+    res.json({ success: true, data });
   } catch (err) {
     console.error('GET /api/appointments error:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -22,7 +32,8 @@ router.get('/', (req, res) => {
 });
 
 // POST /api/appointments
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
+  const dbInstance = await db.getDB();
   try {
     const { patientName, patientPhone, doctorId, doctorName, doctorDept, date, slot, reason } = req.body;
 
@@ -30,18 +41,22 @@ router.post('/', (req, res) => {
       return res.status(400).json({ success: false, error: 'patientName, doctorId, date and slot are required' });
     }
 
+    await dbInstance.run('BEGIN EXCLUSIVE TRANSACTION');
+
     // Check slot conflict
-    const conflict = db.findOne('appointments', a =>
-      a.doctorId === doctorId &&
-      a.date === date &&
-      a.slot === slot &&
-      a.status === 'upcoming'
+    const conflict = await dbInstance.get(
+      'SELECT id FROM appointments WHERE doctorId = ? AND date = ? AND slot = ? AND status = ?',
+      [doctorId, date, slot, 'upcoming']
     );
+    
     if (conflict) {
+      await dbInstance.run('ROLLBACK');
       return res.status(409).json({ success: false, error: 'This time slot is already booked' });
     }
 
-    const appt = db.insert('appointments', {
+    const appt = {
+      id: randomUUID(),
+      createdAt: new Date().toISOString(),
       patientName,
       patientPhone: patientPhone || '',
       doctorId,
@@ -51,29 +66,46 @@ router.post('/', (req, res) => {
       slot,
       reason: reason || '',
       status: 'upcoming',
-    });
+    };
 
+    await dbInstance.run(
+      `INSERT INTO appointments (id, patientName, patientPhone, doctorId, doctorName, doctorDept, date, slot, reason, status, createdAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [appt.id, appt.patientName, appt.patientPhone, appt.doctorId, appt.doctorName, appt.doctorDept, appt.date, appt.slot, appt.reason, appt.status, appt.createdAt]
+    );
+
+    await dbInstance.run('COMMIT');
     res.status(201).json({ success: true, data: appt });
   } catch (err) {
+    try { await dbInstance.run('ROLLBACK'); } catch (e) {}
     console.error('POST /api/appointments error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // PATCH /api/appointments/:id
-router.patch('/:id', (req, res) => {
+router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const existing = db.findOne('appointments', a => a.id === id);
+    const dbInstance = await db.getDB();
+    
+    const existing = await dbInstance.get('SELECT * FROM appointments WHERE id = ?', [id]);
     if (!existing) return res.status(404).json({ success: false, error: 'Appointment not found' });
 
     const { status, date, slot } = req.body;
-    const updates = {};
-    if (status) updates.status = status;
-    if (date) updates.date = date;
-    if (slot) updates.slot = slot;
+    const updates = [];
+    const params = [];
+    
+    if (status) { updates.push('status = ?'); params.push(status); }
+    if (date) { updates.push('date = ?'); params.push(date); }
+    if (slot) { updates.push('slot = ?'); params.push(slot); }
 
-    const updated = db.update('appointments', id, updates);
+    if (updates.length > 0) {
+      params.push(id);
+      await dbInstance.run(`UPDATE appointments SET ${updates.join(', ')} WHERE id = ?`, params);
+    }
+    
+    const updated = await dbInstance.get('SELECT * FROM appointments WHERE id = ?', [id]);
     res.json({ success: true, data: updated });
   } catch (err) {
     console.error('PATCH /api/appointments/:id error:', err);
@@ -82,15 +114,18 @@ router.patch('/:id', (req, res) => {
 });
 
 // DELETE /api/appointments/:id — soft cancel
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const existing = db.findOne('appointments', a => a.id === id);
+    const dbInstance = await db.getDB();
+    
+    const existing = await dbInstance.get('SELECT id FROM appointments WHERE id = ?', [id]);
     if (!existing) return res.status(404).json({ success: false, error: 'Appointment not found' });
 
-    db.update('appointments', id, { status: 'cancelled' });
+    await dbInstance.run('UPDATE appointments SET status = ? WHERE id = ?', ['cancelled', id]);
     res.json({ success: true, message: 'Appointment cancelled' });
   } catch (err) {
+    console.error('DELETE /api/appointments/:id error:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });

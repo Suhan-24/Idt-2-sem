@@ -5,17 +5,10 @@ import { getDoctorById } from "../data/doctors";
 import { TIME_SLOTS, DEPT_COLORS, DEPT_ICONS, type Appointment } from "../data/types";
 import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
-import { patchAppointment, cancelAppointment } from "../api";
+import { patchAppointment, cancelAppointment } from "../services/api";
 
-interface MyAppointmentsProps {
-  appointments: Appointment[];
-  onCancel: (id: string) => void;
-  onReschedule: (id: string, newDate: string, newSlot: string) => void;
-  bookedSlots: { doctorId: string; date: string; slot: string }[];
-  onBack: () => void;
-  lang: Lang;
-  darkMode: boolean;
-}
+import { useNavigate } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
 
 function speak(text: string) {
   if (!("speechSynthesis" in window)) return;
@@ -25,7 +18,10 @@ function speak(text: string) {
   window.speechSynthesis.speak(u);
 }
 
-export function MyAppointments({ appointments, onCancel, onReschedule, bookedSlots, onBack, lang, darkMode }: MyAppointmentsProps) {
+export function MyAppointments() {
+  const { lang, darkMode, appointments, bookedSlots, handleCancelAppointment: onCancel, handleRescheduleAppointment: onReschedule } = useGlobal();
+  const navigate = useNavigate();
+  
   const [activeTab, setActiveTab] = useState<"upcoming" | "completed" | "cancelled">("upcoming");
   const [cancelTarget, setCancelTarget] = useState<string | null>(null);
   const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(null);
@@ -43,28 +39,29 @@ export function MyAppointments({ appointments, onCancel, onReschedule, bookedSlo
   async function handleCancel(id: string) {
     try {
       await cancelAppointment(id);
-    } catch {
-      // API unavailable — update local state anyway
+      onCancel(id);
+    } catch (err: any) {
+      alert(err.message || "Failed to cancel appointment");
+    } finally {
+      setCancelTarget(null);
     }
-    onCancel(id);
-    setCancelTarget(null);
   }
 
   async function handleReschedule() {
     if (!rescheduleTarget || !rescheduleDate || !rescheduleSlot) return;
     try {
       await patchAppointment(rescheduleTarget.id, { date: rescheduleDate, slot: rescheduleSlot });
-    } catch {
-      // Offline fallback — update local state anyway
+      onReschedule(rescheduleTarget.id, rescheduleDate, rescheduleSlot);
+      setRescheduleSuccess(true);
+      setTimeout(() => {
+        setRescheduleTarget(null);
+        setRescheduleDate("");
+        setRescheduleSlot("");
+        setRescheduleSuccess(false);
+      }, 2000);
+    } catch (err: any) {
+      alert(err.message || "Failed to reschedule appointment");
     }
-    onReschedule(rescheduleTarget.id, rescheduleDate, rescheduleSlot);
-    setRescheduleSuccess(true);
-    setTimeout(() => {
-      setRescheduleTarget(null);
-      setRescheduleDate("");
-      setRescheduleSlot("");
-      setRescheduleSuccess(false);
-    }, 2000);
   }
 
   const isSlotBooked = (appt: Appointment, slot: string) =>
@@ -79,9 +76,9 @@ export function MyAppointments({ appointments, onCancel, onReschedule, bookedSlo
   return (
     <div className="min-h-screen pt-24 pb-16 px-4"
       style={{ background: darkMode ? "#0f172a" : "linear-gradient(160deg, #eff6ff 0%, #f0fff8 100%)" }}>
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <button onClick={onBack} className={`flex items-center gap-2 mb-5 text-sm ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
+          <button onClick={() => navigate(-1)} className={`flex items-center gap-2 mb-5 text-sm transition-colors ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
             <ArrowLeft size={16} /> {t(lang, "back")}
           </button>
 

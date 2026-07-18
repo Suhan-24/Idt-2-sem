@@ -5,17 +5,10 @@ import { getDoctorById } from "../data/doctors";
 import { TIME_SLOTS, DEPT_COLORS, DEPT_ICONS, type Appointment } from "../data/types";
 import type { Lang } from "../i18n/translations";
 import { t } from "../i18n/translations";
-import { createAppointment } from "../api";
+import { createAppointment } from "../services/api";
 
-interface AppointmentBookingProps {
-  doctorId: string;
-  onBack: () => void;
-  onBooked: (appt: Appointment) => void;
-  bookedSlots: { doctorId: string; date: string; slot: string }[];
-  lang: Lang;
-  darkMode: boolean;
-  userProfile: { name: string; mobile: string } | null;
-}
+import { useNavigate, useLocation } from "react-router-dom";
+import { useGlobal } from "../context/GlobalContext";
 
 function speak(text: string) {
   if (!("speechSynthesis" in window)) return;
@@ -25,7 +18,12 @@ function speak(text: string) {
   window.speechSynthesis.speak(u);
 }
 
-export function AppointmentBooking({ doctorId, onBack, onBooked, bookedSlots, lang, darkMode, userProfile }: AppointmentBookingProps) {
+export function AppointmentBooking() {
+  const { lang, darkMode, user: userProfile, bookedSlots, handleBooked } = useGlobal();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const doctorId = new URLSearchParams(location.search).get("doctorId") || "";
+  
   const doctor = getDoctorById(doctorId);
   const [selectedSlot, setSelectedSlot] = useState("");
   const [form, setForm] = useState({
@@ -95,25 +93,13 @@ export function AppointmentBooking({ doctorId, onBack, onBooked, bookedSlots, la
         status: "upcoming",
         createdAt: saved.createdAt,
       };
-      onBooked(appt);
+      handleBooked(appt);
       setStep("success");
-    } catch {
-      // Offline fallback: create locally
-      const appt: Appointment = {
-        id: Date.now().toString(),
-        patientName: form.name,
-        patientPhone: form.phone,
-        doctorId: doctor!.id,
-        doctorName: doctor!.name,
-        doctorDept: doctor!.dept,
-        date: form.date,
-        slot: selectedSlot,
-        reason: form.reason,
-        status: "upcoming",
-        createdAt: new Date().toISOString(),
-      };
-      onBooked(appt);
-      setStep("success");
+      setTimeout(() => {
+        navigate("/myappointments");
+      }, 3000);
+    } catch (err: any) {
+      setSubmitError(err.message || "Failed to book appointment. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -133,8 +119,7 @@ export function AppointmentBooking({ doctorId, onBack, onBooked, bookedSlots, la
       <div className="max-w-2xl mx-auto">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           {step !== "success" && (
-            <button onClick={step === "book" ? onBack : () => setStep("book")}
-              className={`flex items-center gap-2 mb-5 text-sm transition-colors ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
+            <button onClick={step === "book" ? () => navigate(-1) : () => setStep("book")} className={`flex items-center gap-2 mb-6 text-sm transition-colors ${darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-blue-600"}`}>
               <ArrowLeft size={16} /> {t(lang, "back")}
             </button>
           )}
@@ -259,6 +244,12 @@ export function AppointmentBooking({ doctorId, onBack, onBooked, bookedSlots, la
                     </p>
                   </div>
 
+                  {submitError && (
+                    <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl">
+                      {submitError}
+                    </div>
+                  )}
+
                   <button type="submit" disabled={!selectedSlot}
                     className="w-full py-4 rounded-2xl text-white font-bold text-sm disabled:opacity-40 transition-all hover:opacity-90 hover:shadow-xl"
                     style={{ background: `linear-gradient(135deg, ${deptColor}, #16a34a)` }}>
@@ -341,7 +332,7 @@ export function AppointmentBooking({ doctorId, onBack, onBooked, bookedSlots, la
                         <span className={`text-sm font-semibold ${text}`}>{value}</span>
                       </div>
                     ))}
-                    <button onClick={onBack}
+                    <button onClick={() => navigate("/")}
                       className="w-full mt-4 py-3.5 rounded-2xl text-white font-bold text-sm"
                       style={{ background: "linear-gradient(135deg, #1a6fd4, #16a34a)" }}>
                       Back to Home
