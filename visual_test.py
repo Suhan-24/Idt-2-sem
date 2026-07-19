@@ -3,6 +3,12 @@ import os
 import sys
 
 def main():
+    # Force UTF-8 output encoding for terminals that default to CP1252 (like Windows CMD/PowerShell)
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8')
+
     print("🎬 Launching Visual End-to-End Tests with slow-motion...")
     
     # We pass the SLOW_MO environment variable to trigger the delay in playwright.config.ts
@@ -14,6 +20,7 @@ def main():
         subprocess.run(
             ["npx", "playwright", "test", "--headed", "--timeout=120000"],
             env=env,
+            shell=True,
             check=True
         )
         print("✅ Visual testing completed successfully!")
